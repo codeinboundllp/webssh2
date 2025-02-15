@@ -57,13 +57,13 @@ exports.connect = (commQueue) => {
             const state = await commQueue.getJobState(job.id);
             
             if (count === 100) {
-              resolve();
+              return resolve();
             }
 
             if (state === "completed") {
                 job = (await commQueue.getJob(job.id));
                 
-                resolve();
+                return resolve();
             } else {
               m((count+1));
             }
