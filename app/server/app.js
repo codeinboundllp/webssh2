@@ -46,7 +46,6 @@ signals.forEach((signal) =>
     countdownTimer();
     io.close();
     server.close();
-    redis.close();
   })
 );
 
