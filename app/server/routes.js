@@ -52,21 +52,25 @@ exports.connect = (commQueue) => {
 
       return await new Promise((resolve) => {
         
-        const m = () => {
+        const m = (count) => {
           setTimeout(async () => {
             const state = await commQueue.getJobState(job.id);
             
+            if (count === 100) {
+              resolve();
+            }
+
             if (state === "completed") {
                 job = (await commQueue.getJob(job.id));
                 
                 resolve();
             } else {
-              m();
+              m((count+1));
             }
           }, 1000);  
         }
 
-        m();
+        m(0);
       })
     }
     
@@ -74,7 +78,7 @@ exports.connect = (commQueue) => {
 
     const sessionDetails = job.returnvalue;
     
-    if (job.returnvalue === null || job.returnvalue === undefined) {
+    if (sessionDetails === null || sessionDetails === undefined) {
       res.status(400).send("Bad Request!");
       return;
     }
