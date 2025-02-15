@@ -18,37 +18,17 @@ const { Redis } = require('ioredis');
 const redis = new Redis({ host: "0.0.0.0", port: 6380, maxRetriesPerRequest: null, username: "default", password: "mysecretpassword" })
 const commQueue = new Queue("CommunicationQueue", { connection: redis  });
 
-let remainingSeconds = config.safeShutdownDuration;
-let shutdownMode = false;
-let shutdownInterval;
-let connectionCount = 0;
-
-function safeShutdownGuard(req, res, next) {
-  if (!shutdownMode) return next();
-  res.status(503).end('Service unavailable: Server shutting down');
-}
-
-app.use(safeShutdownGuard);
 app.use(session);
 if (config.accesslog) app.use(logger('common'));
 app.disable('x-powered-by');
 app.use(favicon(path.join(publicPath, 'favicon.ico')));
 app.use(express.urlencoded({ extended: true }));
-app.post('/ssh/:sessionID', connect(commQueue));
-app.get('/ssh/:sessionID', connect(commQueue));
 app.post('/ssh', express.static(publicPath, config.express.ssh));
 app.use('/ssh', express.static(publicPath, config.express.ssh));
 app.get('/ssh/reauth', reauth);
+app.use('/ssh/:sessionID', connect(commQueue));
 app.use(notfound);
 app.use(handleErrors);
-
-function stopApp(reason) {
-  shutdownMode = false;
-  if (reason) console.info(`Stopping: ${reason}`);
-  clearInterval(shutdownInterval);
-  io.close();
-  server.close();
-}
 
 io.on('connection', appSocket(commQueue));
 
@@ -57,32 +37,20 @@ io.use((socket, next) => {
 });
 
 function countdownTimer() {
-  if (!shutdownMode) clearInterval(shutdownInterval);
-  remainingSeconds -= 1;
-  if (remainingSeconds <= 0) {
-    stopApp('Countdown is over');
-  } else io.emit('shutdownCountdownUpdate', remainingSeconds);
+  io.emit('shutdownCountdownUpdate', 5);
 }
 
 const signals = ['SIGTERM', 'SIGINT'];
 signals.forEach((signal) =>
   process.on(signal, () => {
-    
-    if (shutdownMode) stopApp('Safe shutdown aborted, force quitting');
-    if (!(connectionCount > 0)) stopApp('All connections ended');
-    shutdownMode = true;
-    if (!shutdownInterval) shutdownInterval = setInterval(countdownTimer, 1000);
+    countdownTimer();
+    io.close();
+    server.close();
+    redis.close();
   })
 );
 
 const onConnection = (socket) => {
-  connectionCount += 1;
-  socket.on('disconnect', () => {
-    connectionCount -= 1;
-    if (connectionCount <= 0 && shutdownMode) {
-      stopApp('All clients disconnected');
-    }
-  });
   socket.on('geometry', (cols, rows) => {
     socket.request.session.ssh.cols = cols;
     socket.request.session.ssh.rows = rows;

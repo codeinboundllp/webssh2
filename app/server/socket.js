@@ -1,10 +1,3 @@
-/* eslint-disable complexity */
-/* eslint no-unused-expressions: ["error", { "allowShortCircuit": true, "allowTernary": true }],
-   no-console: ["error", { allow: ["warn", "error"] }] */
-/* jshint esversion: 6, asi: true, node: true */
-// socket.js
-
-// private
 const debug = require('debug');
 const SSH = require('ssh2').Client;
 const CIDRMatcher = require('cidr-matcher');
@@ -13,11 +6,6 @@ const dnsPromises = require('dns').promises;
 const util = require('util');
 const { webssh2debug, auditLog, logError } = require('./logging');
 
-/**
- * parse conn errors
- * @param {object} socket Socket object
- * @param {object} err    Error object
- */
 function connError(socket, err) {
   let msg = util.inspect(err);
   const { session } = socket.request;
@@ -35,10 +23,6 @@ function connError(socket, err) {
   logError(socket, 'CONN ERROR', msg);
 }
 
-/**
- * check ssh host is in allowed subnet
- * @param {object} socket Socket information
- */
 async function checkSubnet(socket) {
   let ipaddress = socket.request.session.ssh.host;
   if (!validator.isIP(`${ipaddress}`)) {
@@ -69,9 +53,8 @@ async function checkSubnet(socket) {
   }
 }
 
-// public
 exports.appSocket = (commQueue) => {
-  return (() => {
+  return ((socket) => {
     let login = false;
 
     socket.once('disconnecting', (reason) => {
@@ -255,7 +238,7 @@ exports.appSocket = (commQueue) => {
         socket.disconnect(true);
       }
     }
-
+    
     setupConnection();
   })
 };
