@@ -1,9 +1,3 @@
-/* eslint no-unused-expressions: ["error", { "allowShortCircuit": true, "allowTernary": true }],
-   no-console: ["error", { allow: ["warn", "error", "info"] }] */
-/* jshint esversion: 6, asi: true, node: true */
-// logging.js
-// private
-
 const debug = require('debug');
 const util = require('util');
 

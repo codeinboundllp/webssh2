@@ -33,10 +33,12 @@
   },
   "dependencies": {
     "basic-auth": "~2.0.1",
+    "bullmq": "^5.40.3",
     "cidr-matcher": "^2.1.1",
     "debug": "^4.3.4",
     "express": "^4.19.2",
     "express-session": "^1.18.0",
+    "ioredis": "^5.5.0",
     "morgan": "~1.10.0",
     "read-config-ng": "^3.0.7",
     "serve-favicon": "^2.5.0",

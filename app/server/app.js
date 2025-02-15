@@ -1,57 +1,47 @@
-/* jshint esversion: 6, asi: true, node: true */
-/* eslint no-unused-expressions: ["error", { "allowShortCircuit": true, "allowTernary": true }],
-   no-console: ["error", { allow: ["warn", "error", "info"] }] */
-// app.js
-
-// eslint-disable-next-line import/order
 const config = require('./config');
 const path = require('path');
-
 const nodeRoot = path.dirname(require.main.filename);
 const publicPath = path.join(nodeRoot, 'client', 'public');
 const express = require('express');
 const logger = require('morgan');
-
 const app = express();
 const server = require('http').createServer(app);
 const favicon = require('serve-favicon');
 const io = require('socket.io')(server, config.socketio);
 const session = require('express-session')(config.express);
-
-const appSocket = require('./socket');
-const { setDefaultCredentials, basicAuth } = require('./util');
+const { appSocket } = require('./socket');
 const { webssh2debug } = require('./logging');
 const { reauth, connect, notfound, handleErrors } = require('./routes');
+const { Queue } = require('bullmq');
+const { Redis } = require('ioredis');
 
-setDefaultCredentials(config.user);
+const redis = new Redis({ host: "0.0.0.0", port: 6380, maxRetriesPerRequest: null, username: "default", password: "mysecretpassword" })
+const commQueue = new Queue("CommunicationQueue", { connection: redis  });
 
-// safe shutdown
 let remainingSeconds = config.safeShutdownDuration;
 let shutdownMode = false;
 let shutdownInterval;
 let connectionCount = 0;
-// eslint-disable-next-line consistent-return
+
 function safeShutdownGuard(req, res, next) {
   if (!shutdownMode) return next();
   res.status(503).end('Service unavailable: Server shutting down');
 }
-// express
+
 app.use(safeShutdownGuard);
 app.use(session);
 if (config.accesslog) app.use(logger('common'));
 app.disable('x-powered-by');
 app.use(favicon(path.join(publicPath, 'favicon.ico')));
 app.use(express.urlencoded({ extended: true }));
-app.post('/ssh/host/:host?', connect);
+app.post('/ssh/:sessionID', connect(commQueue));
+app.get('/ssh/:sessionID', connect(commQueue));
 app.post('/ssh', express.static(publicPath, config.express.ssh));
 app.use('/ssh', express.static(publicPath, config.express.ssh));
-app.use(basicAuth);
 app.get('/ssh/reauth', reauth);
-app.get('/ssh/host/:host?', connect);
 app.use(notfound);
 app.use(handleErrors);
 
-// clean stop
 function stopApp(reason) {
   shutdownMode = false;
   if (reason) console.info(`Stopping: ${reason}`);
@@ -60,13 +50,10 @@ function stopApp(reason) {
   server.close();
 }
 
-// bring up socket
-io.on('connection', appSocket);
+io.on('connection', appSocket(commQueue));
 
-// socket.io
-// expose express session with socket.request.session
 io.use((socket, next) => {
-  socket.request.res ? session(socket.request, socket.request.res, next) : next(next); // eslint disable-line
+  socket.request.res ? session(socket.request, socket.request.res, next) : next(next);
 });
 
 function countdownTimer() {
@@ -80,17 +67,13 @@ function countdownTimer() {
 const signals = ['SIGTERM', 'SIGINT'];
 signals.forEach((signal) =>
   process.on(signal, () => {
+    
     if (shutdownMode) stopApp('Safe shutdown aborted, force quitting');
-    if (!connectionCount > 0) stopApp('All connections ended');
+    if (!(connectionCount > 0)) stopApp('All connections ended');
     shutdownMode = true;
-    console.error(
-      `\r\n${connectionCount} client(s) are still connected.\r\nStarting a ${remainingSeconds} seconds countdown.\r\nPress Ctrl+C again to force quit`
-    );
     if (!shutdownInterval) shutdownInterval = setInterval(countdownTimer, 1000);
   })
 );
-
-module.exports = { server, config };
 
 const onConnection = (socket) => {
   connectionCount += 1;
@@ -101,7 +84,6 @@ const onConnection = (socket) => {
     }
   });
   socket.on('geometry', (cols, rows) => {
-    // TODO need to rework how we pass settings to ssh2, this is less than ideal
     socket.request.session.ssh.cols = cols;
     socket.request.session.ssh.rows = rows;
     webssh2debug(socket, `SOCKET GEOMETRY: termCols = ${cols}, termRows = ${rows}`);
@@ -109,3 +91,5 @@ const onConnection = (socket) => {
 };
 
 io.on('connection', onConnection);
+
+module.exports = { server, config };

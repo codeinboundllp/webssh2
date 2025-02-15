@@ -47,9 +47,7 @@ term.open(terminalContainer);
 term.focus();
 fitAddon.fit();
 
-const socket = io({
-  path: '/ssh/socket.io',
-});
+const socket = io("localhost:2222");
 
 // reauthenticate
 function reauthSession () { // eslint-disable-line
