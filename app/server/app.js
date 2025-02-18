@@ -18,6 +18,8 @@ const { Redis } = require('ioredis');
 const redis = new Redis({ host: "0.0.0.0", port: 6380, maxRetriesPerRequest: null, username: "default", password: "mysecretpassword" })
 const commQueue = new Queue("CommunicationQueue", { connection: redis  });
 
+let count = 0;
+
 app.use(session);
 if (config.accesslog) app.use(logger('common'));
 app.disable('x-powered-by');
@@ -41,13 +43,18 @@ function countdownTimer() {
 }
 
 const signals = ['SIGTERM', 'SIGINT'];
-signals.forEach((signal) =>
+signals.forEach((signal) => {
   process.on(signal, () => {
     countdownTimer();
-    io.close();
     server.close();
-  })
-);
+  });
+
+  count++;
+  if (count > 1) {
+    console.log("forcefully terminating the process!");
+    process.exit();
+  }
+});
 
 const onConnection = (socket) => {
   socket.on('geometry', (cols, rows) => {
