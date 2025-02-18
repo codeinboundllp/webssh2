@@ -39,7 +39,7 @@ exports.connect = (commQueue) => {
       lineHeight,
     } = config.terminal;
     
-    const sessionID = req.params?.sessionID;
+    const sessionID = req?.params?.sessionID;
 
     if (sessionID === null || sessionID === undefined) {
       res.status(400).send("No SessionID!");
@@ -83,8 +83,13 @@ exports.connect = (commQueue) => {
       return;
     }
 
+    if (sessionDetails === false || typeof sessionDetails !== "object") {
+      res.status(400).send("Expired SSH Session!");
+      return;      
+    }
+
     if (sessionDetails.status === 2) {
-      res.status(400).send("Expired Session!");
+      res.status(400).send("Expired SSH Session!");
       return;
     }
 
