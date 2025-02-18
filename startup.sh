@@ -12,6 +12,6 @@ nvm install node
 
 nvm use node
 
-cd ./app && npm i
+cd ./app && npm i && npm run build
 
 npm run start
