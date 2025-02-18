@@ -45,15 +45,15 @@ function countdownTimer() {
 const signals = ['SIGTERM', 'SIGINT'];
 signals.forEach((signal) => {
   process.on(signal, () => {
+    count++;
+    if (count > 1) {
+      console.log("forcefully terminating the process!");
+      process.exit();
+    }
+    
     countdownTimer();
     server.close();
   });
-
-  count++;
-  if (count > 1) {
-    console.log("forcefully terminating the process!");
-    process.exit();
-  }
 });
 
 const onConnection = (socket) => {
