@@ -8,7 +8,7 @@ exports.closeSession = (commQueue) => {
   return (req) => {
     const sessionID = req.body.session_id;
     const value = map.get(sessionID);
-    commQueue.add("Update_Session_Status", { session_id: socket?.request?.session?.session_id, status: 2 });
+    // commQueue.add("Update_Session_Status", { session_id: socket?.request?.session?.session_id, status: 2 });
     value.conn?.end();
     value.socket?.disconnect(true);
     map.delete(sessionID);
