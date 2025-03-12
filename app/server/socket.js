@@ -116,8 +116,6 @@ exports.appSocket = (commQueue) => {
       });
   
       conn.on('end', (_) => {
-        commQueue.add("Update_Session_Status", { session_id: socket.request.session.session_id, status: 2 });
-        map.delete(socket.request.session.session_id);
         socket.disconnect(true);
       });
 
