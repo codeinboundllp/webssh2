@@ -6,7 +6,7 @@ const map = new Map();
 
 exports.closeSession = (commQueue) => {
   return (req) => {
-    const sessionID = req.body.session_id;
+    const sessionID = JSON.parse(req.body).session_id;
     console.log(sessionID);
     const value = map.get(sessionID);
     // commQueue.add("Update_Session_Status", { session_id: socket?.request?.session?.session_id, status: 2 });
