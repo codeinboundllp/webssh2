@@ -102,7 +102,7 @@ exports.appSocket = (commQueue) => {
             socket.emit('data', data.toString('utf-8'));
           });
 
-          stream.on('close', (_, _) => {
+          stream.on('close', (_) => {
             if (socket.request.session.username && login === true) {
               login = false;
             }
