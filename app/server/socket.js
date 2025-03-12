@@ -5,14 +5,13 @@ const { webssh2debug, auditLog, logError } = require('./logging');
 const map = new Map();
 
 exports.closeSession = (commQueue) => {
-  return async (job) => {
-    console.log(job);
+  return (job) => {
     const sessionID = job.data.session_id;
     const value = map.get(sessionID);
     commQueue.add("Update_Session_Status", { session_id: socket?.request?.session?.session_id, status: 2 });
-    map.delete(sessionID);
     value.conn.end();
     value.socket.disconnect(true);
+    map.delete(sessionID);
   }
 }
 

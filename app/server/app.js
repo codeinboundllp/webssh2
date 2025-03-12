@@ -18,6 +18,17 @@ const { Redis } = require('ioredis');
 const redis = new Redis({ host: "0.0.0.0", port: 6380, maxRetriesPerRequest: null, username: "default", password: "mysecretpassword" });
 const commQueue = new Queue("CommunicationQueue", { connection: redis  });
 
+const w = (async () => {
+  const worker = new Worker("CommunicationQueue", null, { connection: redis, autorun: true });
+  const job = await worker.getNextJob("Session_Worker");
+  if (job.name === "Session_Close") {
+    (closeSession(commQueue)(job));
+    await job.moveToCompleted(null, "Session_Worker", false);
+  }
+});
+
+w();
+
 let count = 0;
 
 app.use(session);
@@ -65,7 +76,5 @@ const onConnection = (socket) => {
 };
 
 io.on('connection', onConnection);
-
-new Worker("CommunicationQueue", closeSession(commQueue), { connection: redis, autorun: true });
 
 module.exports = { server, config };
