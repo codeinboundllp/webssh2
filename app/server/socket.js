@@ -103,7 +103,7 @@ exports.appSocket = (commQueue) => {
           });
 
           stream.on('close', (_) => {
-            if (socket.request.session.username && login === true) {
+            if (login === true) {
               login = false;
             }
             socket.disconnect(true);
