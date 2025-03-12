@@ -9,7 +9,6 @@ exports.closeSession = () => {
     if (value === null || value === undefined) {
       res.status(400);
     } else {
-      value.conn.end();
       value.socket.disconnect(true);
       res.status(200);
     }
@@ -40,7 +39,7 @@ exports.appSocket = (commQueue) => {
       });
   
       conn.on('handshake', () => {
-        socket.emit('setTerminalOpts', socket?.request?.session?.ssh?.terminal);
+        socket.emit('setTerminalOpts', socket.request.session.ssh.terminal);
         socket.emit('menu');
         socket.emit('allowreauth', socket.request.session.ssh.allowreauth);
         socket.emit('title', `ssh://${socket.request.session.ssh.host}`);
@@ -60,7 +59,7 @@ exports.appSocket = (commQueue) => {
         socket.emit('status', 'SSH CONNECTION ESTABLISHED');
         socket.emit('statusBackground', 'green');
         socket.emit('allowreplay', socket.request.session.ssh.allowreplay);
-        map.set(socket.request.session.session_id, { socket: socket, conn: conn });
+        map.set(socket.request.session.session_id, { socket: socket });
         const { term, cols, rows } = socket.request.session.ssh;
         
         conn.shell({ term, cols, rows }, (err, stream) => {
