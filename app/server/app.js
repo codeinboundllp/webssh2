@@ -21,6 +21,7 @@ const commQueue = new Queue("CommunicationQueue", { connection: redis  });
 const w = (async () => {
   const worker = new Worker("CommunicationQueue", null, { connection: redis, autorun: true });
   const job = await worker.getNextJob("Session_Worker");
+  console.log(job);
   if (job.name === "Session_Close") {
     (closeSession(commQueue)(job));
     await job.moveToCompleted(null, "Session_Worker", false);
