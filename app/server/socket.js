@@ -5,9 +5,9 @@ const { webssh2debug, auditLog, logError } = require('./logging');
 const map = new Map();
 
 exports.closeSession = (commQueue) => {
-  return (job) => {
+  return async (job) => {
     if (job.name !== "Close_Session") {
-      return null;
+      return;
     }
     console.log(job);
     const sessionID = job.data.session_id;
