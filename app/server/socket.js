@@ -6,6 +6,9 @@ const map = new Map();
 
 exports.closeSession = (commQueue) => {
   return (job) => {
+    if (job.name !== "Close_Session") {
+      return null;
+    }
     console.log(job);
     const sessionID = job.data.session_id;
     const value = map.get(sessionID);
