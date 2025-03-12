@@ -69,6 +69,7 @@ exports.appSocket = (commQueue) => {
           }
 
           socket.once('disconnect', (_) => {
+            console.log("disconnected -> ", map);
             conn.end();
             commQueue.add("Update_Session_Status", { session_id: socket.request.session.session_id, status: 2 });
             map.delete(socket.request.session.session_id);
