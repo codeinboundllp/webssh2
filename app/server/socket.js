@@ -1,55 +1,17 @@
 const debug = require('debug');
 const SSH = require('ssh2').Client;
-const CIDRMatcher = require('cidr-matcher');
-const validator = require('validator');
-const dnsPromises = require('dns').promises;
 const util = require('util');
 const { webssh2debug, auditLog, logError } = require('./logging');
+const map = new Map();
 
-function connError(socket, err) {
-  let msg = util.inspect(err);
-  const { session } = socket.request;
-  if (err?.level === 'client-authentication') {
-    msg = `Authentication failure user=${session.username} from=${socket.handshake.address}`;
-    socket.emit('allowreauth', session.ssh.allowreauth);
-    socket.emit('reauth');
-  }
-  if (err?.code === 'ENOTFOUND') {
-    msg = `Host not found: ${err.hostname}`;
-  }
-  if (err?.level === 'client-timeout') {
-    msg = `Connection Timeout: ${session.ssh.host}`;
-  }
-  logError(socket, 'CONN ERROR', msg);
-}
-
-async function checkSubnet(socket) {
-  let ipaddress = socket.request.session.ssh.host;
-  if (!validator.isIP(`${ipaddress}`)) {
-    try {
-      const result = await dnsPromises.lookup(socket.request.session.ssh.host);
-      ipaddress = result.address;
-    } catch (err) {
-      logError(
-        socket,
-        'CHECK SUBNET',
-        `${err.code}: ${err.hostname} user=${socket.request.session.username} from=${socket.handshake.address}`
-      );
-      socket.emit('ssherror', '404 HOST IP NOT FOUND');
-      socket.disconnect(true);
-      return;
-    }
-  }
-
-  const matcher = new CIDRMatcher(socket.request.session.ssh.allowedSubnets);
-  if (!matcher.contains(ipaddress)) {
-    logError(
-      socket,
-      'CHECK SUBNET',
-      `Requested host ${ipaddress} outside configured subnets / REJECTED user=${socket.request.session.username} from=${socket.handshake.address}`
-    );
-    socket.emit('ssherror', '401 UNAUTHORIZED');
-    socket.disconnect(true);
+exports.closeSession = (commQueue) => {
+  return (job) => {
+    const sessionID = job.data.session_id;
+    const value = map.get(sessionID);
+    commQueue.add("Update_Session_Status", { session_id: socket?.request?.session?.session_id, status: 1 });
+    map.delete(sessionID);
+    value.conn.end();
+    value.socket.disconnect(true);
   }
 }
 
@@ -68,18 +30,14 @@ exports.appSocket = (commQueue) => {
       }
     });
   
-    async function setupConnection() {
+    const setupConnection = async () => {
       if (!socket.request.session) {
         socket.emit('401 UNAUTHORIZED');
         webssh2debug(socket, 'SOCKET: No Express Session / REJECTED');
         socket.disconnect(true);
         return;
       }
-  
-      if (socket?.request?.session?.ssh?.allowedSubnets?.length > 0) {
-        checkSubnet(socket);
-      }
-  
+    
       const conn = new SSH();
   
       conn.on('banner', (data) => {
@@ -112,6 +70,7 @@ exports.appSocket = (commQueue) => {
           `LOGIN user=${socket.request.session.username} from=${socket.handshake.address} host=${socket.request.session.ssh.host}:${socket.request.session.ssh.port}`
         );
         login = true;
+        map.set(socket.request.session.session_id, { socket: socket, conn: conn });
         socket.emit('status', 'SSH CONNECTION ESTABLISHED');
         socket.emit('statusBackground', 'green');
         socket.emit('allowreplay', socket.request.session.ssh.allowreplay);
@@ -122,6 +81,7 @@ exports.appSocket = (commQueue) => {
             logError(socket, `EXEC ERROR`, err);
             commQueue.add("Update_Session_Status", { session_id: socket?.request?.session?.session_id, status: 2 });
             conn.end();
+            map.delete(socket.request.session.session_id);
             socket.disconnect(true);
             return;
           }
@@ -130,6 +90,7 @@ exports.appSocket = (commQueue) => {
             webssh2debug(socket, `CLIENT SOCKET DISCONNECT: ${util.inspect(reason)}`);
             commQueue.add("Update_Session_Status", { session_id: socket?.request?.session?.session_id, status: 2 });
             conn.end();
+            map.delete(socket.request.session.session_id);
             socket.request.session.destroy();
           });
 
@@ -138,6 +99,7 @@ exports.appSocket = (commQueue) => {
             logError(socket, 'SOCKET ERROR', errMsg);
             commQueue.add("Update_Session_Status", { session_id: socket.request.session.session_id, status: 2 });
             conn.end();
+            map.delete(socket.request.session.session_id);
             socket.disconnect(true);
           });
 
@@ -153,6 +115,7 @@ exports.appSocket = (commQueue) => {
               login = false;
               commQueue.add("Update_Session_Status", { session_id: socket?.request?.session?.session_id, status: 2 });
               conn.end();
+              map.delete(socket.request.session.session_id);
               socket.disconnect(true);
             }
             webssh2debug(socket, `SOCKET CONTROL: ${controlData}`);
@@ -183,8 +146,9 @@ exports.appSocket = (commQueue) => {
             if (code !== 0 && typeof code !== 'undefined')
               logError(socket, 'STREAM CLOSE', util.inspect({ message: [code, signal] }));
             commQueue.add("Update_Session_Status", { session_id: socket?.request?.session?.session_id, status: 2 });
-            socket.disconnect(true);
             conn.end();
+            map.delete(socket.request.session.session_id);
+            socket.disconnect(true);
           });
 
           stream.stderr.on('data', (data) => {
@@ -197,6 +161,7 @@ exports.appSocket = (commQueue) => {
         if (err) logError(socket, 'CONN END BY HOST', err);
         webssh2debug(socket, 'CONN END BY HOST');
         commQueue.add("Update_Session_Status", { session_id: socket?.request?.session?.session_id, status: 2 });
+        map.delete(socket.request.session.session_id);
         socket.disconnect(true);
       });
 
@@ -204,6 +169,7 @@ exports.appSocket = (commQueue) => {
         if (err) logError(socket, 'CONN CLOSE', err);
         webssh2debug(socket, 'CONN CLOSE');
         commQueue.add("Update_Session_Status", { session_id: socket?.request?.session?.session_id, status: 2 });
+        map.delete(socket.request.session.session_id);
         socket.disconnect(true);
       });
 
@@ -232,8 +198,8 @@ exports.appSocket = (commQueue) => {
             socket.handshake
           )}`
         );
-        commQueue.add("Update_Session_Status", { session_id: socket?.request?.session?.session_id, status: 2 });
         socket.emit('ssherror', 'WEBSOCKET ERROR - Refresh the browser and try again');
+        map.delete(socket.request.session.session_id);
         socket.request.session.destroy();
         socket.disconnect(true);
       }

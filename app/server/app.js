@@ -9,13 +9,13 @@ const server = require('http').createServer(app);
 const favicon = require('serve-favicon');
 const io = require('socket.io')(server, config.socketio);
 const session = require('express-session')(config.express);
-const { appSocket } = require('./socket');
+const { appSocket, closeSession } = require('./socket');
 const { webssh2debug } = require('./logging');
 const { reauth, connect, notfound, handleErrors } = require('./routes');
-const { Queue } = require('bullmq');
+const { Queue, Worker } = require('bullmq');
 const { Redis } = require('ioredis');
 
-const redis = new Redis({ host: "0.0.0.0", port: 6380, maxRetriesPerRequest: null, username: "default", password: "mysecretpassword" })
+const redis = new Redis({ host: "0.0.0.0", port: 6380, maxRetriesPerRequest: null, username: "default", password: "mysecretpassword" });
 const commQueue = new Queue("CommunicationQueue", { connection: redis  });
 
 let count = 0;
@@ -65,5 +65,7 @@ const onConnection = (socket) => {
 };
 
 io.on('connection', onConnection);
+
+new Worker("Close_Session", closeSession);
 
 module.exports = { server, config };

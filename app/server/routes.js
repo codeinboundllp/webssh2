@@ -39,7 +39,7 @@ exports.connect = (commQueue) => {
       lineHeight,
     } = config.terminal;
     
-    const sessionID = req?.params?.sessionID;
+    const sessionID = req.params?.sessionID;
 
     if (sessionID === null || sessionID === undefined) {
       res.status(400).send("No SessionID!");
