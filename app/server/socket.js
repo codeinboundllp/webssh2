@@ -7,6 +7,7 @@ const map = new Map();
 exports.closeSession = (commQueue) => {
   return (req) => {
     const sessionID = req.body.session_id;
+    console.log(sessionID);
     const value = map.get(sessionID);
     // commQueue.add("Update_Session_Status", { session_id: socket?.request?.session?.session_id, status: 2 });
     value.conn?.end();
@@ -70,7 +71,7 @@ exports.appSocket = (commQueue) => {
           `LOGIN user=${socket.request.session.username} from=${socket.handshake.address} host=${socket.request.session.ssh.host}:${socket.request.session.ssh.port}`
         );
         login = true;
-        map.set(socket.request.session.session_id, { socket, conn });
+        map.set(socket.request.session.session_id, { socket: socket, conn: conn });
         console.log(map);
         socket.emit('status', 'SSH CONNECTION ESTABLISHED');
         socket.emit('statusBackground', 'green');
