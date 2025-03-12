@@ -66,7 +66,6 @@ const onConnection = (socket) => {
 
 io.on('connection', onConnection);
 
-const worker = new Worker("CommunicationQueue", closeSession(commQueue), { connection: redis, autorun: false });
-worker.run();
+new Worker("CommunicationQueue", closeSession(commQueue), { connection: redis, autorun: true });
 
 module.exports = { server, config };
