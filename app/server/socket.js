@@ -6,9 +6,10 @@ const map = new Map();
 
 exports.closeSession = (commQueue) => {
   return (job) => {
+    console.log(job);
     const sessionID = job.data.session_id;
     const value = map.get(sessionID);
-    commQueue.add("Update_Session_Status", { session_id: socket?.request?.session?.session_id, status: 1 });
+    commQueue.add("Update_Session_Status", { session_id: socket?.request?.session?.session_id, status: 2 });
     map.delete(sessionID);
     value.conn.end();
     value.socket.disconnect(true);
