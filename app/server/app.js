@@ -18,10 +18,10 @@ const { Redis } = require('ioredis');
 const redis = new Redis({ host: "0.0.0.0", port: 6380, maxRetriesPerRequest: null, username: "default", password: "mysecretpassword" });
 const commQueue = new Queue("CommunicationQueue", { connection: redis  });
 
-const w = (async () => {
-  const worker =  new Worker("CommunicationQueue", closeSession(commQueue), { connection: redis, autorun: true });
-  console.log(worker);
-});
+const w = async () => {
+  return (new Promise(() => {
+    new Worker("CommunicationQueue", closeSession(commQueue), { connection: redis, autorun: true });
+}))};
 
 w();
 
