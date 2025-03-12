@@ -8,9 +8,11 @@ exports.closeSession = () => {
     const value = map.get(sessionID);
     if (value === null || value === undefined) {
       res.status(400);
+      res.send("success");
     } else {
       value.socket.disconnect(true);
       res.status(200);
+      res.send("success");
     }
   }
 }
