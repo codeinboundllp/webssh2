@@ -10,7 +10,6 @@ const favicon = require('serve-favicon');
 const io = require('socket.io')(server, config.socketio);
 const session = require('express-session')(config.express);
 const { appSocket, closeSession } = require('./socket');
-const { webssh2debug } = require('./logging');
 const { reauth, connect, notfound, handleErrors } = require('./routes');
 const { Queue } = require('bullmq');
 const { Redis } = require('ioredis');
@@ -61,7 +60,6 @@ const onConnection = (socket) => {
   socket.on('geometry', (cols, rows) => {
     socket.request.session.ssh.cols = cols;
     socket.request.session.ssh.rows = rows;
-    webssh2debug(socket, `SOCKET GEOMETRY: termCols = ${cols}, termRows = ${rows}`);
   });
 };
 

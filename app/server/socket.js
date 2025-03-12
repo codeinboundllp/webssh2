@@ -1,18 +1,18 @@
 const debug = require('debug');
 const SSH = require('ssh2').Client;
-const util = require('util');
-const { webssh2debug, auditLog, logError } = require('./logging');
 const map = new Map();
 
-exports.closeSession = (commQueue) => {
-  return (req) => {
-    const sessionID = JSON.parse(req.body).session_id;
-    console.log(sessionID);
+exports.closeSession = () => {
+  return (req, res) => {
+    const sessionID = req.query.sessionID;
     const value = map.get(sessionID);
-    // commQueue.add("Update_Session_Status", { session_id: socket?.request?.session?.session_id, status: 2 });
-    value.conn?.end();
-    value.socket?.disconnect(true);
-    map.delete(sessionID);
+    if (value === null || value === undefined) {
+      res.status(400);
+    } else {
+      value.conn.end();
+      value.socket.disconnect(true);
+      res.status(200);
+    }
   }
 }
 
@@ -20,13 +20,8 @@ exports.appSocket = (commQueue) => {
   return ((socket) => {
     let login = false;
 
-    socket.once('disconnecting', (reason) => {
-      webssh2debug(socket, `SOCKET DISCONNECTING: ${reason}`);
+    socket.once('disconnecting', (_) => {
       if (login === true) {
-        auditLog(
-          socket,
-          `LOGOUT user=${socket.request.session.username} from=${socket.handshake.address} host=${socket.request.session.ssh.host}:${socket.request.session.ssh.port}`
-        );
         login = false;
       }
     });
@@ -34,7 +29,6 @@ exports.appSocket = (commQueue) => {
     const setupConnection = async () => {
       if (!socket.request.session) {
         socket.emit('401 UNAUTHORIZED');
-        webssh2debug(socket, 'SOCKET: No Express Session / REJECTED');
         socket.disconnect(true);
         return;
       }
@@ -46,7 +40,6 @@ exports.appSocket = (commQueue) => {
       });
   
       conn.on('handshake', () => {
-        commQueue.add("Update_Session_Status", { session_id: socket?.request?.session?.session_id, status: 1 });
         socket.emit('setTerminalOpts', socket?.request?.session?.ssh?.terminal);
         socket.emit('menu');
         socket.emit('allowreauth', socket.request.session.ssh.allowreauth);
@@ -59,49 +52,31 @@ exports.appSocket = (commQueue) => {
           'footer',
           `ssh://${socket.request.session.username}@${socket.request.session.ssh.host}:${socket.request.session.ssh.port}`
         );
+        commQueue.add("Update_Session_Status", { session_id: socket.request.session.session_id, status: 1 });
       });
   
       conn.on('ready', () => {
-        webssh2debug(
-          socket,
-          `CONN READY: LOGIN: user=${socket.request.session.username} from=${socket.handshake.address} host=${socket.request.session.ssh.host} port=${socket.request.session.ssh.port} allowreplay=${socket.request.session.ssh.allowreplay} term=${socket.request.session.ssh.term}`
-        );
-        auditLog(
-          socket,
-          `LOGIN user=${socket.request.session.username} from=${socket.handshake.address} host=${socket.request.session.ssh.host}:${socket.request.session.ssh.port}`
-        );
         login = true;
-        map.set(socket.request.session.session_id, { socket: socket, conn: conn });
-        console.log(map);
         socket.emit('status', 'SSH CONNECTION ESTABLISHED');
         socket.emit('statusBackground', 'green');
         socket.emit('allowreplay', socket.request.session.ssh.allowreplay);
+        map.set(socket.request.session.session_id, { socket: socket, conn: conn });
         const { term, cols, rows } = socket.request.session.ssh;
         
         conn.shell({ term, cols, rows }, (err, stream) => {
           if (err) {
-            logError(socket, `EXEC ERROR`, err);
-            commQueue.add("Update_Session_Status", { session_id: socket?.request?.session?.session_id, status: 2 });
-            conn.end();
-            map.delete(socket?.request?.session?.session_id);
             socket.disconnect(true);
             return;
           }
 
-          socket.once('disconnect', (reason) => {
-            webssh2debug(socket, `CLIENT SOCKET DISCONNECT: ${util.inspect(reason)}`);
-            commQueue.add("Update_Session_Status", { session_id: socket?.request?.session?.session_id, status: 2 });
+          socket.once('disconnect', (_) => {
             conn.end();
-            map.delete(socket?.request?.session?.session_id);
+            commQueue.add("Update_Session_Status", { session_id: socket.request.session.session_id, status: 2 });
+            map.delete(socket.request.session.session_id);
             socket.request.session.destroy();
           });
 
-          socket.on('error', (errMsg) => {
-            webssh2debug(socket, `SOCKET ERROR: ${errMsg}`);
-            logError(socket, 'SOCKET ERROR', errMsg);
-            commQueue.add("Update_Session_Status", { session_id: socket.request.session.session_id, status: 2 });
-            conn.end();
-            map.delete(socket?.request?.session?.session_id);
+          socket.on('error', (_) => {
             socket.disconnect(true);
           });
 
@@ -110,22 +85,13 @@ exports.appSocket = (commQueue) => {
               stream.write(`${socket.request.session.userpassword}\n`);
             }
             if (controlData === 'reauth' && socket.request.session.username && login === true) {
-              auditLog(
-                socket,
-                `LOGOUT user=${socket.request.session.username} from=${socket.handshake.address} host=${socket.request.session.ssh.host}:${socket.request.session.ssh.port}`
-              );
               login = false;
-              commQueue.add("Update_Session_Status", { session_id: socket?.request?.session?.session_id, status: 2 });
-              conn.end();
-              map.delete(socket?.request?.session?.session_id);
               socket.disconnect(true);
             }
-            webssh2debug(socket, `SOCKET CONTROL: ${controlData}`);
           });
 
           socket.on('resize', (data) => {
             stream.setWindow(data.rows, data.cols);
-            webssh2debug(socket, `SOCKET RESIZE: ${JSON.stringify([data.rows, data.cols])}`);
           });
 
           socket.on('data', (data) => {
@@ -136,20 +102,10 @@ exports.appSocket = (commQueue) => {
             socket.emit('data', data.toString('utf-8'));
           });
 
-          stream.on('close', (code, signal) => {
-            webssh2debug(socket, `STREAM CLOSE: ${util.inspect([code, signal])}`);
-            if (socket.request.session?.username && login === true) {
-              auditLog(
-                socket,
-                `LOGOUT user=${socket.request.session.username} from=${socket.handshake.address} host=${socket.request.session.ssh.host}:${socket.request.session.ssh.port}`
-              );
+          stream.on('close', (_, _) => {
+            if (socket.request.session.username && login === true) {
               login = false;
             }
-            if (code !== 0 && typeof code !== 'undefined')
-              logError(socket, 'STREAM CLOSE', util.inspect({ message: [code, signal] }));
-            commQueue.add("Update_Session_Status", { session_id: socket?.request?.session?.session_id, status: 2 });
-            conn.end();
-            map.delete(socket?.request?.session?.session_id);
             socket.disconnect(true);
           });
 
@@ -159,26 +115,21 @@ exports.appSocket = (commQueue) => {
         });
       });
   
-      conn.on('end', (err) => {
-        if (err) logError(socket, 'CONN END BY HOST', err);
-        webssh2debug(socket, 'CONN END BY HOST');
-        commQueue.add("Update_Session_Status", { session_id: socket?.request?.session?.session_id, status: 2 });
-        map.delete(socket?.request?.session?.session_id);
+      conn.on('end', (_) => {
+        commQueue.add("Update_Session_Status", { session_id: socket.request.session.session_id, status: 2 });
+        map.delete(socket.request.session.session_id);
         socket.disconnect(true);
       });
 
-      conn.on('close', (err) => {
-        if (err) logError(socket, 'CONN CLOSE', err);
-        webssh2debug(socket, 'CONN CLOSE');
-        commQueue.add("Update_Session_Status", { session_id: socket?.request?.session?.session_id, status: 2 });
-        map.delete(socket?.request?.session?.session_id);
+      conn.on('close', (_) => {
         socket.disconnect(true);
       });
 
-      conn.on('error', (err) => connError(socket, err));
+      conn.on('error', (err) => {
+        console.error(err);
+      });
   
       conn.on('keyboard-interactive', (_name, _instructions, _instructionsLang, _prompts, finish) => {
-        webssh2debug(socket, 'CONN keyboard-interactive');
         finish([socket.request.session.userpassword]);
       });
   
@@ -194,14 +145,7 @@ exports.appSocket = (commQueue) => {
         ssh.debug = debug('ssh2');
         conn.connect(ssh);
       } else {
-        webssh2debug(
-          socket,
-          `CONN CONNECT: Attempt to connect without session.username/password or session varialbles defined, potentially previously abandoned client session. disconnecting websocket client.\r\nHandshake information: \r\n  ${util.inspect(
-            socket.handshake
-          )}`
-        );
         socket.emit('ssherror', 'WEBSOCKET ERROR - Refresh the browser and try again');
-        map.delete(socket.request.session.session_id);
         socket.request.session.destroy();
         socket.disconnect(true);
       }
