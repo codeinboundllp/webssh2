@@ -9,8 +9,8 @@ exports.closeSession = (commQueue) => {
     const sessionID = req.body.session_id;
     const value = map.get(sessionID);
     commQueue.add("Update_Session_Status", { session_id: socket?.request?.session?.session_id, status: 2 });
-    value.conn.end();
-    value.socket.disconnect(true);
+    value.conn?.end();
+    value.socket?.disconnect(true);
     map.delete(sessionID);
   }
 }
@@ -82,7 +82,7 @@ exports.appSocket = (commQueue) => {
             logError(socket, `EXEC ERROR`, err);
             commQueue.add("Update_Session_Status", { session_id: socket?.request?.session?.session_id, status: 2 });
             conn.end();
-            map.delete(socket.request.session.session_id);
+            map.delete(socket?.request?.session?.session_id);
             socket.disconnect(true);
             return;
           }
@@ -91,7 +91,7 @@ exports.appSocket = (commQueue) => {
             webssh2debug(socket, `CLIENT SOCKET DISCONNECT: ${util.inspect(reason)}`);
             commQueue.add("Update_Session_Status", { session_id: socket?.request?.session?.session_id, status: 2 });
             conn.end();
-            map.delete(socket.request.session.session_id);
+            map.delete(socket?.request?.session?.session_id);
             socket.request.session.destroy();
           });
 
@@ -100,7 +100,7 @@ exports.appSocket = (commQueue) => {
             logError(socket, 'SOCKET ERROR', errMsg);
             commQueue.add("Update_Session_Status", { session_id: socket.request.session.session_id, status: 2 });
             conn.end();
-            map.delete(socket.request.session.session_id);
+            map.delete(socket?.request?.session?.session_id);
             socket.disconnect(true);
           });
 
@@ -116,7 +116,7 @@ exports.appSocket = (commQueue) => {
               login = false;
               commQueue.add("Update_Session_Status", { session_id: socket?.request?.session?.session_id, status: 2 });
               conn.end();
-              map.delete(socket.request.session.session_id);
+              map.delete(socket?.request?.session?.session_id);
               socket.disconnect(true);
             }
             webssh2debug(socket, `SOCKET CONTROL: ${controlData}`);
@@ -148,7 +148,7 @@ exports.appSocket = (commQueue) => {
               logError(socket, 'STREAM CLOSE', util.inspect({ message: [code, signal] }));
             commQueue.add("Update_Session_Status", { session_id: socket?.request?.session?.session_id, status: 2 });
             conn.end();
-            map.delete(socket.request.session.session_id);
+            map.delete(socket?.request?.session?.session_id);
             socket.disconnect(true);
           });
 
@@ -162,7 +162,7 @@ exports.appSocket = (commQueue) => {
         if (err) logError(socket, 'CONN END BY HOST', err);
         webssh2debug(socket, 'CONN END BY HOST');
         commQueue.add("Update_Session_Status", { session_id: socket?.request?.session?.session_id, status: 2 });
-        map.delete(socket.request.session.session_id);
+        map.delete(socket?.request?.session?.session_id);
         socket.disconnect(true);
       });
 
@@ -170,7 +170,7 @@ exports.appSocket = (commQueue) => {
         if (err) logError(socket, 'CONN CLOSE', err);
         webssh2debug(socket, 'CONN CLOSE');
         commQueue.add("Update_Session_Status", { session_id: socket?.request?.session?.session_id, status: 2 });
-        map.delete(socket.request.session.session_id);
+        map.delete(socket?.request?.session?.session_id);
         socket.disconnect(true);
       });
 
