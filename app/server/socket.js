@@ -2,18 +2,18 @@ const debug = require('debug');
 const SSH = require('ssh2').Client;
 const map = new Map();
 
-exports.closeSession = () => {
-  return (req, res) => {
-    const sessionID = req.query.sessionID;
-    const value = map.get(sessionID);
-    if (value === null || value === undefined) {
-      res.status(400);
-      res.send("success");
-    } else {
-      value.socket.disconnect(true);
-      res.status(200);
-      res.send("success");
-    }
+exports.closeSession = (req, res) => {
+  const sessionID = req.query.sessionID;
+  const value = map.get(sessionID);
+  if (value === null || value === undefined) {
+    res.status(400);
+    res.send("error: socket not found");
+  } else {
+    value.socket.emit('status', 'CONNECTION CLOSED BY THE ADMIN');
+    value.socket.emit('statusBackground', 'red');
+    value.socket.disconnect(true);
+    res.status(200);
+    res.send("success: socket removed");
   }
 }
 
@@ -133,11 +133,7 @@ exports.appSocket = (commQueue) => {
         finish([socket.request.session.userpassword]);
       });
   
-      if (
-        socket.request.session.username &&
-        (socket.request.session.userpassword || socket.request.session.privatekey) &&
-        socket.request.session.ssh
-      ) {
+      if (socket.request.session.username && socket.request.session.userpassword && socket.request.session.ssh) {
         const { ssh } = socket.request.session;
         ssh.username = socket.request.session.username;
         ssh.password = socket.request.session.userpassword;

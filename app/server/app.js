@@ -28,7 +28,7 @@ app.post('/ssh', express.static(publicPath, config.express.ssh));
 app.use('/ssh', express.static(publicPath, config.express.ssh));
 app.get('/ssh/reauth', reauth);
 app.use('/ssh/:sessionID', connect(commQueue));
-app.post('/ssh/close', closeSession());
+app.post('/ssh/close', closeSession);
 app.use(notfound);
 app.use(handleErrors);
 
