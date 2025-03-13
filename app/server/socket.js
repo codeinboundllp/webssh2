@@ -53,7 +53,11 @@ exports.appSocket = (commQueue) => {
           'footer',
           `ssh://${socket.request.session.username}@${socket.request.session.ssh.host}:${socket.request.session.ssh.port}`
         );
-        commQueue.add("Update_Session_Status", { session_id: socket.request.session.session_id, status: 1 });
+        commQueue.add("Update_Session_Status", { 
+          session_id: socket.request.session.session_id, 
+          status: 1, 
+          remote_address: socket.request.socket.remoteAddress
+        });
       });
   
       conn.on('ready', () => {
