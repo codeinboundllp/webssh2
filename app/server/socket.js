@@ -5,7 +5,7 @@ const map = new Map();
 exports.closeSession = (req, res) => {
   const sessionID = req.query.sessionID;
   const value = map.get(sessionID);
-  if (value === false) {
+  if (value === null || value === undefined || value === false) {
     res.status(400);
     res.send("error: socket not found");
   } else {
