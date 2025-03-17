@@ -14,8 +14,14 @@ const { reauth, connect, notfound, handleErrors } = require('./routes');
 const { Queue } = require('bullmq');
 const { Redis } = require('ioredis');
 
-const redis = new Redis({ host: "0.0.0.0", port: 6380, maxRetriesPerRequest: null, username: "default", password: "mysecretpassword" });
-const commQueue = new Queue("CommunicationQueue", { connection: redis  });
+const redis = new Redis({ 
+  host: process.env.REDIS_HOST, 
+  port: parseInt(process.env.REDIS_PORT), 
+  maxRetriesPerRequest: null, 
+  username: process.env.REDIS_USERNAME, 
+  password: process.env.REDIS_PASSWORD 
+});
+const commQueue = new Queue(process.env.COMM_QUEUE_NAME, { connection: redis  });
 
 let count = 0;
 
@@ -24,10 +30,10 @@ if (config.accesslog) app.use(logger('common'));
 app.disable('x-powered-by');
 app.use(favicon(path.join(publicPath, 'favicon.ico')));
 app.use(express.urlencoded({ extended: true }));
-app.post('/ssh/close', closeSession);
 app.post('/ssh', express.static(publicPath, config.express.ssh));
 app.use('/ssh', express.static(publicPath, config.express.ssh));
 app.get('/ssh/reauth', reauth);
+app.post('/ssh/close', closeSession);
 app.use('/ssh/:sessionID', connect(commQueue));
 app.use(notfound);
 app.use(handleErrors);

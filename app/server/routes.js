@@ -46,20 +46,23 @@ exports.connect = (commQueue) => {
       return;
     }
 
-    let job = await commQueue.add("Get_Session_Details", sessionID);
+    let job = await commQueue.add(process.env.GET_SESSION_JOB_NAME, sessionID);
     
     const r = async () => {
 
       return await new Promise((resolve) => {
         
         const m = (count) => {
+          if (count === 0) {
+            setTimeout(() => { resolve() }, 50000);
+          }
+
           setTimeout(async () => {
-            const state = await commQueue.getJobState(job.id);
-            
-            if (count === 100) {
+            if (count === 50) {
               return resolve();
             }
 
+            const state = await commQueue.getJobState(job.id);
             if (state === "completed") {
                 job = (await commQueue.getJob(job.id));
                 

@@ -5,7 +5,7 @@ const map = new Map();
 exports.closeSession = (req, res) => {
   const internalToken = req.get("X-Internal-Token");
 
-  if (internalToken !== process.env.X_INTERNAL_TOKEN) {
+  if (internalToken !== process.env.X_WEBSSH_AUTH_TOKEN) {
     res.status(400);
     res.send("error: unauthorized");    
   }
@@ -60,7 +60,7 @@ exports.appSocket = (commQueue) => {
           'footer',
           `ssh://${socket.request.session.username}@${socket.request.session.ssh.host}:${socket.request.session.ssh.port}`
         );
-        commQueue.add("Update_Session_Status", { 
+        commQueue.add(process.env.UPDATE_SESSION_JOB_NAME, { 
           session_id: socket.request.session.session_id, 
           status: 1, 
           remote_address: socket.request.socket.remoteAddress
@@ -84,7 +84,7 @@ exports.appSocket = (commQueue) => {
           socket.once('disconnect', (_) => {
             console.log("disconnected -> session_id: ", socket.request.session.session_id);
             conn.end();
-            commQueue.add("Update_Session_Status", { session_id: socket.request.session.session_id, status: 2 });
+            commQueue.add(process.env.UPDATE_SESSION_JOB_NAME, { session_id: socket.request.session.session_id, status: 2 });
             map.delete(socket.request.session.session_id);
             socket.request.session.destroy();
           });
