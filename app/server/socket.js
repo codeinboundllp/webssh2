@@ -3,6 +3,13 @@ const SSH = require('ssh2').Client;
 const map = new Map();
 
 exports.closeSession = (req, res) => {
+  const internalToken = req.get("X-Internal-Token");
+
+  if (internalToken !== process.env.X_INTERNAL_TOKEN) {
+    res.status(400);
+    res.send("error: unauthorized");    
+  }
+
   const sessionID = req.query.sessionID;
   const value = map.get(sessionID);
   if (value === null || value === undefined || value === false) {
@@ -27,8 +34,8 @@ exports.appSocket = (commQueue) => {
       }
     });
   
-    const setupConnection = async () => {
-      if (!socket.request.session) {
+    const setupConnection = () => {
+      if (socket.request.session === null || socket.request.session === undefined) {
         socket.emit('401 UNAUTHORIZED');
         socket.disconnect(true);
         return;

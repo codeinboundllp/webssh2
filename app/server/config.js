@@ -81,7 +81,7 @@ const configDefault = {
     client: false,
     server: false,
   },
-  accesslog: false,
+  accesslog: true,
   verify: false
 };
 
