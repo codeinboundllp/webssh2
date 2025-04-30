@@ -3,7 +3,7 @@ const SSH = require('ssh2').Client;
 const map = new Map();
 
 exports.closeSession = (req, res) => {
-  const internalToken = req.get("X-Internal-Token");
+  const internalToken = req.get("X-WebSSH-Auth-Token");
 
   if (internalToken !== process.env.X_WEBSSH_AUTH_TOKEN) {
     res.status(400).json({ message: "unauthorized" });
