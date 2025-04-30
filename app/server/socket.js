@@ -2,25 +2,22 @@ const debug = require('debug');
 const SSH = require('ssh2').Client;
 const map = new Map();
 
-exports.closeSession = (req, res) => {
-  const internalToken = req.get("X-Internal-Token");
+exports.closeSession = (request, response) => {
+  const internalToken = request.get("X-Internal-Token");
 
   if (internalToken !== process.env.X_WEBSSH_AUTH_TOKEN) {
-    res.status(400);
-    res.send("error: unauthorized");    
+    response.status(400);
   }
 
-  const sessionID = req.query.sessionID;
+  const sessionID = request.query.sessionID;
   const value = map.get(sessionID);
   if (value === null || value === undefined || value === false) {
-    res.status(400);
-    res.send("error: socket not found");
+    response.status(400);
   } else {
     value.socket.emit('status', 'CONNECTION CLOSED BY THE ADMIN');
     value.socket.emit('statusBackground', 'red');
     value.socket.disconnect(true);
-    res.status(200);
-    res.send("success: socket removed");
+    response.status(200);
   }
 }
 

@@ -48,14 +48,10 @@
     "winston": "^3.13.0"
   },
   "scripts": {
-    "start": "node index.js",
+    "start": "node --env-file .env index.js",
     "build": "webpack --progress --config scripts/webpack.prod.js",
     "builddev": "webpack --progress --config scripts/webpack.dev.js",
-    "analyze": "webpack --json --config scripts/webpack.prod.js | webpack-bundle-size-analyzer",
-    "test": "snyk test",
-    "watch": "nodemon index.js",
-    "cleanmac": "find . -name '.DS_Store' -type f -delete",
-    "release": "standard-version"
+    "analyze": "webpack --json --config scripts/webpack.prod.js | webpack-bundle-size-analyzer"
   },
   "devDependencies": {
     "@fortawesome/fontawesome-svg-core": "^6.5.2",
