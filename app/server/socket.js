@@ -6,17 +6,19 @@ exports.closeSession = (req, res) => {
   const internalToken = req.get("X-Internal-Token");
 
   if (internalToken !== process.env.X_WEBSSH_AUTH_TOKEN) {
-    res.status(400);
+    res.status(400).json({ message: "unauthorized" });
+    return;
   }
 
   const sessionID = req.query.sessionID;
   const value = map.get(sessionID);
-  if (value === null || value === undefined || value === false) {
-    res.status(400)
+  if (value === null || value === undefined) {
+    res.status(400).json({ message: "socket not found" });
   } else {
     value.socket.emit('status', 'CONNECTION CLOSED BY THE ADMIN');
     value.socket.emit('statusBackground', 'red');
     value.socket.disconnect(true);
+    res.status(200).json({ message: "success" });
   }
 }
 
