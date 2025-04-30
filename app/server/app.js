@@ -35,8 +35,6 @@ app.use('/ssh', express.static(publicPath, config.express.ssh));
 app.get('/ssh/reauth', reauth);
 app.post('/ssh/close', closeSession);
 app.get('/ssh/:sessionID', connect(commQueue));
-app.use(notfound);
-app.use(handleErrors);
 
 io.on('connection', appSocket(commQueue));
 
