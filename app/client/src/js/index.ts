@@ -47,7 +47,7 @@ term.open(terminalContainer);
 term.focus();
 fitAddon.fit();
 
-const socket = io("localhost:2222");
+const socket = io("4.240.85.42:2222");
 
 // reauthenticate
 function reauthSession () { // eslint-disable-line
