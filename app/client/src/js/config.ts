@@ -1,0 +1,1 @@
+export const SERVER_HOST_AND_PORT: string = "4.240.85.42:2222";

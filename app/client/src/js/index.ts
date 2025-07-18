@@ -4,6 +4,7 @@ import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import { library, dom } from '@fortawesome/fontawesome-svg-core';
 import { faBars, faClipboard, faDownload, faKey, faCog } from '@fortawesome/free-solid-svg-icons';
+import { SERVER_HOST_AND_PORT } from './config';
 
 library.add(faBars, faClipboard, faDownload, faKey, faCog);
 dom.watch();
@@ -47,7 +48,7 @@ term.open(terminalContainer);
 term.focus();
 fitAddon.fit();
 
-const socket = io("4.240.85.42:2222");
+const socket = io(SERVER_HOST_AND_PORT);
 
 // reauthenticate
 function reauthSession () { // eslint-disable-line
