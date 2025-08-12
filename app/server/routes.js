@@ -98,8 +98,8 @@ exports.connect = (commQueue) => {
 
     req.session.session_id = sessionID;
 
-    host = sessionDetails.node_ip;
-    port = sessionDetails.service_port;
+    host = sessionDetails.nodeip;
+    port = sessionDetails.servicePort;
 
     req.session.username = sessionDetails.username;
     req.session.userpassword = sessionDetails.password;
